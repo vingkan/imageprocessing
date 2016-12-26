@@ -192,7 +192,7 @@ public class Main {
 		return result;
 	}
 
-	public static BufferedImage applyErosion(BufferedImage image, Kernel kernel){
+	public static BufferedImage applyColorStructure(BufferedImage image, Kernel kernel, Color struct){
 		BufferedImage result = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 		int width = image.getWidth();
 		int height = image.getHeight();
@@ -226,8 +226,7 @@ public class Main {
 							try{
 								int xc = x + xk;
 								int yc = y + yk;
-								Color clear = new Color(0, 0, 0);
-								result.setRGB(xc, yc, clear.getRGB());
+								result.setRGB(xc, yc, struct.getRGB());
 							}
 							catch(Exception ex){
 								// Coordinate out of Bounds
@@ -244,6 +243,14 @@ public class Main {
 			}
 		}
 		return result;
+	}
+
+	public static BufferedImage applyErosion(BufferedImage image, Kernel kernel){
+		return applyColorStructure(image, kernel, new Color(0, 0, 0));
+	}
+
+	public static BufferedImage applyDilation(BufferedImage image, Kernel kernel){
+		return applyColorStructure(image, kernel, new Color(255, 255, 255));
 	}
 
 	public static void main(String[] args){
@@ -266,8 +273,9 @@ public class Main {
 			BufferedImage image = ImageIO.read(file);
 			Kernel kernel = new Main.Kernel(10, 0.1);
 			BufferedImage eroded = Main.applyErosion(image, kernel);
+			BufferedImage dilated = Main.applyDilation(image, kernel);
 
-			BufferedImage[] images = {image, eroded};
+			BufferedImage[] images = {image, eroded, dilated};
 			BufferedImage comparison = getImageComparison(images);
 			ImageIO.write(comparison, "png", new File("morph-output.png"));
 
