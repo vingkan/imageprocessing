@@ -58,24 +58,7 @@ public class Main {
 		}
 	}
 
-	public static BufferedImage getImageComparison(BufferedImage left, BufferedImage right){
-		int width = left.getWidth() + right.getWidth();
-		int height = left.getHeight() > right.getHeight() ? left.getHeight() : right.getHeight();
-		BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-		for(int xl = 0; xl < left.getWidth(); xl++){
-			for(int yl = 0; yl < left.getHeight(); yl++){
-				result.setRGB(xl, yl, left.getRGB(xl, yl));
-			}
-		}
-		for(int xr = 0; xr < right.getWidth(); xr++){
-			for(int yr = 0; yr < right.getHeight(); yr++){
-				result.setRGB(left.getWidth() + xr, yr, right.getRGB(xr, yr));
-			}
-		}
-		return result;
-	}
-
-	public static BufferedImage getImageComparison(BufferedImage[] list){
+	public static BufferedImage getWideImageComparison(BufferedImage[] list){
 		int width = 0;
 		int height = 0;
 		for(BufferedImage img : list){
@@ -93,6 +76,28 @@ public class Main {
 				}
 			}
 			traveled += image.getWidth();
+		}
+		return result;
+	}
+
+	public static BufferedImage getTallImageComparison(BufferedImage[] list){
+		int width = 0;
+		int height = 0;
+		for(BufferedImage img : list){
+			height += img.getHeight();
+			if(img.getWidth() > width){
+				width = img.getWidth();
+			}
+		}
+		BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		int traveled = 0;
+		for(BufferedImage image : list){
+			for(int x = 0; x < image.getWidth(); x++){
+				for(int y = 0; y < image.getHeight(); y++){
+					result.setRGB(x, traveled + y, image.getRGB(x, y));
+				}
+			}
+			traveled += image.getHeight();
 		}
 		return result;
 	}
@@ -246,11 +251,79 @@ public class Main {
 	}
 
 	public static BufferedImage applyErosion(BufferedImage image, Kernel kernel){
-		return applyColorStructure(image, kernel, new Color(0, 0, 0));
+		BufferedImage result = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		int width = image.getWidth();
+		int height = image.getHeight();
+		int start = 0;
+		for(int x = 0; x < width; x++){
+			for(int y = 0; y < height; y++){
+				Color original = new Color(image.getRGB(x, y));
+				double lowMag = getMagnitude(new Color(255, 255, 255));
+				Color lowColor = original;
+				int halfSize = (int)(kernel.getSize() / 2);
+				for(int xt = -1 * halfSize; xt < halfSize; xt++){
+					for(int yt = -1 * halfSize; yt < halfSize; yt++){
+						try{
+							int xp = x + xt;
+							int yp = y + yt;
+							int rgb = image.getRGB(xp, yp);
+							Color c = new Color(rgb);
+							double mag = getMagnitude(c);
+							if(mag < lowMag){
+								lowMag = mag;
+								lowColor = c;
+							}
+						}
+						catch(Exception ex){
+							// Coordinate out of Bounds
+						}
+					}
+				}
+				result.setRGB(x, y, lowColor.getRGB());
+			}
+			if(x%100==0){
+				System.out.println(x);
+			}
+		}
+		return result;
 	}
 
 	public static BufferedImage applyDilation(BufferedImage image, Kernel kernel){
-		return applyColorStructure(image, kernel, new Color(255, 255, 255));
+		BufferedImage result = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		int width = image.getWidth();
+		int height = image.getHeight();
+		int start = 0;
+		for(int x = 0; x < width; x++){
+			for(int y = 0; y < height; y++){
+				Color original = new Color(image.getRGB(x, y));
+				double highMag = getMagnitude(new Color(0, 0, 0));
+				Color highColor = original;
+				int halfSize = (int)(kernel.getSize() / 2);
+				for(int xt = -1 * halfSize; xt < halfSize; xt++){
+					for(int yt = -1 * halfSize; yt < halfSize; yt++){
+						try{
+							int xp = x + xt;
+							int yp = y + yt;
+							int rgb = image.getRGB(xp, yp);
+							Color c = new Color(rgb);
+							double mag = getMagnitude(c);
+							if(mag > highMag){
+								highMag = mag;
+								highColor = c;
+							}
+						}
+						catch(Exception ex){
+							// Coordinate out of Bounds
+						}
+					}
+				}
+				result.setRGB(x, y, highColor.getRGB());
+			}
+			if(x%100==0){
+				System.out.println(x);
+			}
+		}
+		return result;
 	}
 
 	public static void main(String[] args){
@@ -266,17 +339,25 @@ public class Main {
 			BufferedImage edges = Main.applyEdgeDetection(blurred, kernel);
 			BufferedImage edges0 = Main.applyEdgeDetection(image, kernel);
 			BufferedImage[] images = {image, edges0, blurred, edges};
-			BufferedImage comparison = getImageComparison(images);
+			BufferedImage comparison = getWideImageComparison(images);
 			ImageIO.write(comparison, "png", new File("edge-output.png"));*/
 
-			File file = new File("morph-input.png");
-			BufferedImage image = ImageIO.read(file);
 			Kernel kernel = new Main.Kernel(10, 0.1);
-			BufferedImage eroded = Main.applyErosion(image, kernel);
-			BufferedImage dilated = Main.applyDilation(image, kernel);
 
-			BufferedImage[] images = {image, eroded, dilated};
-			BufferedImage comparison = getImageComparison(images);
+			BufferedImage imageGray = ImageIO.read(new File("grayscale-morph-input.png"));
+			BufferedImage erodedGray = Main.applyErosion(imageGray, kernel);
+			BufferedImage dilatedGray = Main.applyDilation(imageGray, kernel);
+			BufferedImage[] imagesGray = {dilatedGray, imageGray, erodedGray};
+			BufferedImage comparisonGray = getWideImageComparison(imagesGray);
+			
+			BufferedImage imageBinary = ImageIO.read(new File("morph-input.png"));
+			BufferedImage erodedBinary = Main.applyErosion(imageBinary, kernel);
+			BufferedImage dilatedBinary = Main.applyDilation(imageBinary, kernel);
+			BufferedImage[] imagesBinary = {dilatedBinary, imageBinary, erodedBinary};
+			BufferedImage comparisonBinary = getWideImageComparison(imagesBinary);
+
+			BufferedImage[] compareImages = {comparisonGray, comparisonBinary};
+			BufferedImage comparison = getTallImageComparison(compareImages);
 			ImageIO.write(comparison, "png", new File("morph-output.png"));
 
 		}
