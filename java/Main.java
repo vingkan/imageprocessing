@@ -53,55 +53,79 @@ public class Main {
 		}
 	}
 
+	public static BufferedImage getImageComparison(BufferedImage left, BufferedImage right){
+		int width = left.getWidth() + right.getWidth();
+		int height = left.getHeight() > right.getHeight() ? left.getHeight() : right.getHeight();
+		BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		for(int xl = 0; xl < left.getWidth(); xl++){
+			for(int yl = 0; yl < left.getHeight(); yl++){
+				result.setRGB(xl, yl, left.getRGB(xl, yl));
+			}
+		}
+		for(int xr = 0; xr < right.getWidth(); xr++){
+			for(int yr = 0; yr < right.getHeight(); yr++){
+				result.setRGB(left.getWidth() + xr, yr, right.getRGB(xr, yr));
+			}
+		}
+		return result;
+	}
+
+	public static BufferedImage applyGaussianBlur(BufferedImage image, Kernel kernel){
+		BufferedImage result = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		int width = image.getWidth();
+		int height = image.getHeight();
+		int start = 0;
+		for(int x = 0; x < width; x++){
+			for(int y = 0; y < height; y++){
+				int pixels = 0;
+				int rSum = 0;
+				int gSum = 0;
+				int bSum = 0;
+				int halfSize = (int)(kernel.getSize() / 2);
+				for(int xt = -1 * halfSize; xt < halfSize; xt++){
+					for(int yt = -1 * halfSize; yt < halfSize; yt++){
+						try{
+							int xp = x + xt;
+							int yp = y + yt;
+							int rgb = image.getRGB(xp, yp);
+							double weight = 1.0 + kernel.getWeight(xt, yt);
+							Color c = new Color(rgb);
+							rSum += (c.getRed() * weight);
+							gSum += (c.getGreen() * weight);
+							bSum += (c.getBlue() * weight);
+							pixels++;
+						}
+						catch(Exception ex){
+							// Coordinate out of Bounds
+						}
+					}
+				}
+				Color nc = new Color(
+					normalizeColor(rSum/pixels), 
+					normalizeColor(gSum/pixels), 
+					normalizeColor(bSum/pixels)
+				);
+				result.setRGB(x, y, nc.getRGB());
+			}
+			if(x%100==0){
+				System.out.println(x);
+			}
+		}
+		return result;
+	}
+
 	public static void main(String[] args){
 		
 		System.out.println("Started.");
 		
 		try{
 
-			File file = new File("input.png");
+			File file = new File("edge-input.png");
 			BufferedImage image = ImageIO.read(file);
-			BufferedImage result = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
-
-			int width = image.getWidth();
-			int height = image.getHeight();
-			int half = average(width, 0);
-			int start = 0;
-			Kernel kernel = new Main.Kernel(5, 0.66);
-			for(int x = 0; x < half; x++){
-				for(int y = 0; y < height; y++){
-					image.setRGB(x+half, y, image.getRGB(x, y));
-					int pixels = 0;
-					int rSum = 0;
-					int gSum = 0;
-					int bSum = 0;
-					for(int xt = -1 * kernel.getSize(); xt < kernel.getSize(); xt++){
-						for(int yt = -1 * kernel.getSize(); yt < kernel.getSize(); yt++){
-							try{
-								int xp = x + xt;
-								int yp = y + yt;
-								int rgb = image.getRGB(xp, yp);
-								double weight = 1.0 + kernel.getWeight(xt, yt);
-								Color c = new Color(rgb);
-								rSum += (c.getRed() * weight);
-								gSum += (c.getGreen() * weight);
-								bSum += (c.getBlue() * weight);
-								pixels++;
-							}
-							catch(Exception ex){
-								// Coordinate out of Bounds
-							}
-						}
-					}
-					Color nc = new Color(rSum/pixels, gSum/pixels, bSum/pixels);
-					image.setRGB(x, y, nc.getRGB());
-				}
-				if(x%100==0){
-					System.out.println(x);
-				}
-			}
-
-			ImageIO.write(image, "png", new File("output.png"));
+			Kernel kernel = new Main.Kernel(10, 0.66);
+			BufferedImage result = Main.applyGaussianBlur(image, kernel);
+			BufferedImage comparison = getImageComparison(result, image);
+			ImageIO.write(comparison, "png", new File("edge-output.png"));
 
 		}
 		catch(Exception e){
