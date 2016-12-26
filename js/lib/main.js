@@ -211,6 +211,23 @@ function KernelSmoothingFilter(imgData, kernel){
 
 document.body.onload = function(){
 
+	RunDepthFilter();
+	//RunSmoothingFilters();
+
+}
+
+function RunDepthFilter(){
+	document.body.onload = function(){
+		DisplayDepthFilter(0.5);
+	}
+	document.getElementById('img-p').addEventListener('change', event => {
+		var value = parseFloat(event.target.value, 10);
+		document.getElementById('img-d').innerText = value.toFixed(2);
+		DisplayDepthFilter(value);
+	});
+}
+
+function RunSmoothingFilters(){
 	var img = document.getElementById('img');
 	ctx.drawImage(img, 0, 0, 1000, 1000);
 	var imgData = ctx.getImageData(0, 0, 1000, 1000).data;
@@ -239,16 +256,4 @@ document.body.onload = function(){
 		canvasData.data[d] = newData[d];
 	}
 	ctx.putImageData(canvasData, 0, 0);
-
-}
-
-function RunDepthFilter(){
-	document.body.onload = function(){
-		DisplayDepthFilter(0.5);
-	}
-	document.getElementById('img-p').addEventListener('change', event => {
-		var value = parseFloat(event.target.value, 10);
-		document.getElementById('img-d').innerText = value.toFixed(2);
-		DisplayDepthFilter(value);
-	});
 }
