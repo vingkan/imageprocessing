@@ -28,6 +28,10 @@ public class Main {
 			return this.size;
 		}
 
+		public double getTreshold(){
+			return this.stdev;
+		}
+
 		public double getWeight(int x, int y){
 			return gaussian(x, y, this.stdev);
 		}
@@ -188,20 +192,84 @@ public class Main {
 		return result;
 	}
 
+	public static BufferedImage applyErosion(BufferedImage image, Kernel kernel){
+		BufferedImage result = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		int width = image.getWidth();
+		int height = image.getHeight();
+		int start = 0;
+		for(int x = 0; x < width; x++){
+			for(int y = 0; y < height; y++){
+				Color original = new Color(image.getRGB(x, y));
+				int pixels = 0;
+				double diffSum = 0;
+				int halfSize = (int)(kernel.getSize() / 2);
+				for(int xt = -1 * halfSize; xt < halfSize; xt++){
+					for(int yt = -1 * halfSize; yt < halfSize; yt++){
+						try{
+							int xp = x + xt;
+							int yp = y + yt;
+							int rgb = image.getRGB(xp, yp);
+							Color c = new Color(rgb);
+							double diff = getMagnitudeDifference(original, c);
+							diffSum += Math.abs(diff);
+							pixels++;
+						}
+						catch(Exception ex){
+							// Coordinate out of Bounds
+						}
+					}
+				}
+				double mag = diffSum / (double)pixels;
+				if(mag > kernel.getTreshold()){
+					for(int xk = -1 * halfSize; xk < halfSize; xk++){
+						for(int yk = -1 * halfSize; yk < halfSize; yk++){
+							try{
+								int xc = x + xk;
+								int yc = y + yk;
+								Color clear = new Color(0, 0, 0);
+								result.setRGB(xc, yc, clear.getRGB());
+							}
+							catch(Exception ex){
+								// Coordinate out of Bounds
+							}
+						}
+					}
+				}
+				else{
+					result.setRGB(x, y, original.getRGB());
+				}
+			}
+			if(x%100==0){
+				System.out.println(x);
+			}
+		}
+		return result;
+	}
+
 	public static void main(String[] args){
 		
 		System.out.println("Started.");
 		
 		try{
 
-			File file = new File("edge-input.png");
+			/*File file = new File("edge-input.png");
 			BufferedImage image = ImageIO.read(file);
 			Kernel kernel = new Main.Kernel(10, 0.66);
 			BufferedImage blurred = Main.applyGaussianBlur(image, kernel);
 			BufferedImage edges = Main.applyEdgeDetection(blurred, kernel);
-			BufferedImage[] images = {image, blurred, edges};
+			BufferedImage edges0 = Main.applyEdgeDetection(image, kernel);
+			BufferedImage[] images = {image, edges0, blurred, edges};
 			BufferedImage comparison = getImageComparison(images);
-			ImageIO.write(comparison, "png", new File("edge-output.png"));
+			ImageIO.write(comparison, "png", new File("edge-output.png"));*/
+
+			File file = new File("morph-input.png");
+			BufferedImage image = ImageIO.read(file);
+			Kernel kernel = new Main.Kernel(10, 0.1);
+			BufferedImage eroded = Main.applyErosion(image, kernel);
+
+			BufferedImage[] images = {image, eroded};
+			BufferedImage comparison = getImageComparison(images);
+			ImageIO.write(comparison, "png", new File("morph-output.png"));
 
 		}
 		catch(Exception e){
